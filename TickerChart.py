@@ -24,15 +24,15 @@ class TickerChart:
             self.seriesType = self.askForSeriesType()
 
     def identifyTickers(self):
-        if sys.argv[2] and self.seriesType in ['S', 'C']:
+        if len(sys.argv) >= 3 and sys.argv[2] and self.seriesType in ['S', 'C']:
             self.ticker = sys.argv[2]
-            if self.isTickerValid(self.ticker):
+            if self.validateTicker(self.ticker) == 1:
                 return
 
-        elif sys.argv[2] and sys.argv[3] and self.seriesType in ['F']:
+        elif len(sys.argv) >= 4 and sys.argv[2] and sys.argv[3] and self.seriesType in ['F']:
             self.ticker = sys.argv[2]
             self.converted = sys.argv[3]
-            if self.isTickerValid(self.ticker) and self.isTickerValid(self.converted):
+            if self.validateTicker(self.ticker) == 1 and self.validateTicker(self.converted) == 1:
                 return
 
         self.ticker = self.askForTickerSymbol(self.seriesType)
@@ -54,19 +54,21 @@ class TickerChart:
             'C': 'Ticker for digital currency (e.g. ETH)',
         }
 
-        ticker = input(f"Enter a {label[key]}: ")
-        tickerStatus = self.isTickerValid(ticker)
+        ticker = input(f"Enter a {label[key]}: ").strip().upper()
+        tickerStatus = self.validateTicker(ticker)
         if tickerStatus == 1:
             return ticker
+        elif tickerStatus == -2:
+            print('Your second ticker is the same as the first one. Please enter a different one.')
         else:
             print('Your input doesn\'t appear to be a valid ticker.')
-            if tickerStatus == -1 and len(self.getMatchingTickers()) > 0:
+            if len(self.getMatchingTickers()) > 0:
                 print(f'Here are some suggestions: {suggestions}')
 
-            return self.askForTickerSymbol(key)
+        return self.askForTickerSymbol(key)
 
     # returns 1 if ticker is an exact match, 0 if there are no matching tickers, -1 if there are ticker suggestions
-    def isTickerValid(self, ticker):
+    def validateTicker(self, ticker):
         print("Please hold on while we look that up ...")
 
         ticker = ticker.strip().upper()
@@ -84,9 +86,13 @@ class TickerChart:
                 return 0
 
         else: # handle all physical and digital currencies by checking against the lists we have
+            if self.ticker == self.converted and self.converted != '':
+                return -2
+
             df = pd.read_csv('resources/digital_currency_list.csv')
             if any(df['currency code'] == ticker):
                 self.seriesType = 'C'
+                self.name = df.loc[df['currency code'] == ticker, 'currency name'].iloc[0]
                 return 1
 
             df = pd.read_csv('resources/physical_currency_list.csv')
@@ -131,12 +137,22 @@ class TickerChart:
         for name, epParams in endpoints.items():
             print(f'  Downloading {name} ... ')
             requestUrl = apiUrl + epParams['fxn'] + commonParam
-            print(requestUrl)
+            # print(requestUrl)
             data[name] = pd.read_csv(requestUrl)
             data[name] = data[name].sort_values(by=[epParams['x-axis']])
 
         self.start = data['timeseries'].iloc[0]['timestamp']
         self.end = data['timeseries'].iloc[-1]['timestamp']
+
+
+        # rename column names to make them consistent
+        if self.seriesType == 'C':
+            data['timeseries'] = data['timeseries'].rename(columns = {"open (USD)": "open",
+                                                                            "high (USD)": "high",
+                                                                            "low (USD)": "low",
+                                                                            "close (USD)": "close"
+                                                                        }
+                                                                    )
 
         print(f'  Cleaning up data ... ')
         if 'sma50' in endpoints:
@@ -148,7 +164,11 @@ class TickerChart:
 
 
     def plotChart(self, data):
-        print(f'Preparing graphing library to plot chart for {self.ticker} ...')
+        if self.seriesType in ['S', 'C']:
+            print(f'Preparing graphing library to plot chart for {self.ticker} ...')
+        else:
+            print(f'Preparing graphing library to plot chart for {self.ticker} to {self.converted} ...')
+
         seriesLabels = {
             'S': 'Stock Prices',
             'F': 'Forex Exchange Rate',
@@ -200,7 +220,7 @@ class TickerChart:
         titles = {
             'S': f' Time Series for {self.ticker}<br>{self.name}',
             'F': f' {self.ticker} to {self.converted} Exchange Rate',
-            'C': f' {self.ticker} Cryptocurrency Spot Prices',
+            'C': f' {self.ticker} Cryptocurrency Spot Prices<br>{self.name} in USD (default)',
         }
         if self.seriesType in ['S', 'C']:
             yAxisLabel = self.currency
