@@ -80,6 +80,7 @@ class TickerChart:
 
         data = {}
         for name, epParams in endpoints.items():
+            print(f'  Downloading {name} ... ')
             requestUrl = apiUrl + epParams['fxn'] + commonParam
             data[name] = pd.read_csv(requestUrl)
             data[name] = data[name].sort_values(by=[epParams['x-axis']])
@@ -102,10 +103,28 @@ class TickerChart:
                         name=self.seriesType)
         sma50 = go.Scatter(x=data['sma50']['time'],
                         y=data['sma50']['SMA'],
-                        name='50-day MA')
+                        name='50-day MA',
+                        marker = dict(
+                                size = 10,
+                                color = 'rgba(128, 0, 0, .9)',
+                                line = dict(
+                                    width = 2,
+                                    color = 'rgb(128, 0, 0)',
+                                )
+                            )
+                        )
         sma200 = go.Scatter(x=data['sma200']['time'],
                         y=data['sma200']['SMA'],
-                        name='200-day MA')
+                        name='200-day MA',
+                        marker = dict(
+                                size = 10,
+                                color = 'rgba(0, 0, 255, .8)',
+                                line = dict(
+                                    width = 2,
+                                    color = 'rgb(0, 0, 255)'
+                                )
+                            )
+                        )
 
         data = [candlestick, sma50, sma200]
         fig = go.Figure(data=data, layout=self.getLayoutParams())
@@ -114,13 +133,13 @@ class TickerChart:
     def getLayoutParams(self):
         layout = go.Layout(
             title=go.layout.Title(
-                text= f' Time Series for {self.ticker}',
+                text=f' Time Series for {self.ticker}<br>{self.name}',
                 xref='paper',
-                x=0
+                font=dict(family="Verdana", size=25)
             ),
             xaxis=go.layout.XAxis(
                 title=go.layout.xaxis.Title(
-                    text=f'Period (from {self.start} to {self.end}) ',
+                    text=f'Period',
                     font=dict(
                         family='Courier New, monospace',
                         size=18,
