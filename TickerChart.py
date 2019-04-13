@@ -17,7 +17,11 @@ def requestData():
     for name, epParams in endpoints.items():
         requestUrl = apiUrl + epParams['fxn'] + commonParam
         data[name] = pd.read_csv(requestUrl)
-        data[name].sort_values(by=[epParams['x-axis']])
+        data[name] = data[name].sort_values(by=[epParams['x-axis']])
+
+    oldestDataPoint = data['timeseries'].iloc[0]['timestamp']
+    data['sma50'] = data['sma50'][['sma50'].time < oldestDataPoint]
+    print(data['sma50'])
 
     return data
 
@@ -36,4 +40,4 @@ def plotChart(data):
 
 
 data = requestData()
-plotChart(data)
+# plotChart(data)
