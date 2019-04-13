@@ -25,29 +25,32 @@ class TickerChart:
         self.seriesType = self.askForSeriesType()
 
     def identifyTickers(self):
+        print('Please wait while we validate your inputs.')
+
         if len(sys.argv) >= 3 and sys.argv[2] and self.seriesType in ['S', 'C']:
             self.ticker = sys.argv[2]
             if self.validateTicker(self.ticker) == 1:
                 return
 
-        elif len(sys.argv) >= 4 and sys.argv[2] and sys.argv[3] and self.seriesType in ['F']:
-            self.ticker = sys.argv[2]
-            self.converted = sys.argv[3]
+        if self.seriesType in ['F']:
+            if len(sys.argv) >= 3:
+                self.ticker = sys.argv[2]
+                if self.validateTicker(self.ticker) == 1:
+                    if len(sys.argv) >= 4:
+                        self.converted = sys.argv[3]
+                        if self.validateTicker(self.converted) == 1:
+                            return
+                        elif self.validateTicker(self.converted) == -2:
+                            print('Your second ticker is the same as the first one.')
+                            self.ticker = ''
+                            self.converted = ''
+                        elif self.validateTicker(self.converted) == -3:
+                            print('Your second ticker doesn\'t look like a physical currency.')
+                            self.converted = self.askForTickerSymbol(f'{self.seriesType}2')
+                            return
 
-            if self.validateTicker(self.ticker) == -2:
-                print('Your second ticker is the same as the first one.')
-                self.ticker = ''
-                self.converted = ''
-            elif self.validateTicker(self.ticker) == -3:
-                print('Your first ticker is not considered a physical currency.')
-            elif self.validateTicker(self.converted) == -3:
-                print('Your second ticker is not considered a physical currency.')
-            elif self.validateTicker(self.ticker) == 1:
-                if self.validateTicker(self.converted) == 1:
-                    return
-                elif self.validateTicker(self.converted) == -2:
-
-                    self.converted = self.askForTickerSymbol(f'{self.seriesType}2')
+                elif self.validateTicker(self.ticker) == -3:
+                    print('Your first ticker doesn\'t look like physical currency.')
 
         self.ticker = self.askForTickerSymbol(self.seriesType)
         if self.seriesType in ['F']:
@@ -62,13 +65,17 @@ class TickerChart:
 
     def askForTickerSymbol(self, key):
         label = {
-            'S': 'Ticker symbol (e.g.  GOOGL)',
-            'F': 'Physical or Digital currency you\'re converting FROM (e.g. USD)',
-            'F2': 'Physical or Digital currency you\'re converting TO (e.g. BTC)',
+            'S': 'Ticker symbol for stock (e.g. GOOGL)',
+            'F': 'Physical currency you\'re converting FROM (e.g. USD)',
+            'F2': 'Physical currency you\'re converting TO (e.g. EUR)',
             'C': 'Ticker for digital currency (e.g. ETH)',
         }
 
-        ticker = input(f"Enter a {label[key]}: ").strip().upper()
+        try:
+            ticker = input(f"Enter a {label[key]}: ").strip().upper()
+        except KeyboardInterrupt:
+            print('Program terminated.')
+
         tickerStatus = self.validateTicker(ticker)
         if tickerStatus == 1:
             return ticker
@@ -76,15 +83,19 @@ class TickerChart:
             print('Your second ticker is the same as the first one. Please enter a different one.')
         else:
             print('Your input doesn\'t appear to be a valid ticker.')
-            if len(self.getMatchingTickers()) > 0:
-                print(f'Here are some suggestions: {suggestions}')
+            if key == 'S' and len(self.getMatchingTickers()) > 0:
+                print(f'Here are some suggestions: {self.getMatchingTickers()}')
 
         return self.askForTickerSymbol(key)
 
-    # returns 1 if ticker is an exact match, 0 if there are no matching tickers, -1 if there are ticker suggestions
-    def validateTicker(self, ticker):
-        print("Please hold on while we look that up ...")
 
+    # Returns 1 if ticker is an exact match (correct)
+    # Returns 0 if there are no matching tickers
+    # Returns -1 if there are ticker suggestions
+    # Returns -2 if first and second tickers are duplicates (forex)
+    # Returns -3 if currency doesn't match expected forex/crypto input
+
+    def validateTicker(self, ticker):
         ticker = ticker.strip().upper()
         if self.seriesType == "S": # make sure that the ticker corresponds to a valid stock:
             requestUrl = f'https://www.alphavantage.co/query?function=SYMBOL_SEARCH&keywords={ticker}&apikey=' + self.apiKey
@@ -125,6 +136,7 @@ class TickerChart:
         if self.df and self.df.empty:
             return []
         else:
+            print(self.df)
             self.matchingTickers = list(self.df['bestMatches']['1. symbol'])
             return self.matchingTickers
 
@@ -151,17 +163,21 @@ class TickerChart:
         elif self.seriesType in ['C']:
             endpoints['timeseries'] = {'fxn': 'DIGITAL_CURRENCY_DAILY&market=USD', 'x-axis': 'timestamp'}
 
+
         data = {}
         for name, epParams in endpoints.items():
             print(f'  Downloading {name} ... ')
             requestUrl = apiUrl + epParams['fxn'] + commonParam
             # print(requestUrl)
-            data[name] = pd.read_csv(requestUrl)
-            data[name] = data[name].sort_values(by=[epParams['x-axis']])
+            try:
+                data[name] = pd.read_csv(requestUrl)
+                data[name] = data[name].sort_values(by=[epParams['x-axis']])
+            except KeyError:
+                print("We're sorry but our data source doesn't support these inputs.")
+                return
 
         self.start = data['timeseries'].iloc[0]['timestamp']
         self.end = data['timeseries'].iloc[-1]['timestamp']
-
 
         # rename column names to make them consistent
         if self.seriesType == 'C':
@@ -236,7 +252,7 @@ class TickerChart:
 
     def getLayoutParams(self):
         titles = {
-            'S': f' Time Series for {self.ticker}<br>{self.name}',
+            'S': f' Time Series for {self.ticker}<br>Stock Name: {self.name}',
             'F': f' {self.ticker} to {self.converted} Exchange Rate',
             'C': f' {self.ticker} Cryptocurrency Spot Prices<br>{self.name} in USD (default)',
         }
@@ -255,7 +271,7 @@ class TickerChart:
                 title=go.layout.xaxis.Title(
                     text=f'Period',
                     font=dict(
-                        family='Courier New, monospace',
+                        family='Verdana',
                         size=18,
                         color='#7f7f7f'
                     )
@@ -265,7 +281,7 @@ class TickerChart:
                 title=go.layout.yaxis.Title(
                     text=yAxisLabel,
                     font=dict(
-                        family='Courier New, monospace',
+                        family='Verdana',
                         size=18,
                         color='#7f7f7f'
                     )
@@ -279,4 +295,5 @@ tc = TickerChart()
 tc.identifyType()
 tc.identifyTickers()
 data = tc.requestData()
-tc.plotChart(data)
+if data:
+    tc.plotChart(data)
