@@ -20,8 +20,7 @@ def requestData():
         data[name] = data[name].sort_values(by=[epParams['x-axis']])
 
     oldestDataPoint = data['timeseries'].iloc[0]['timestamp']
-    data['sma50'] = data['sma50'][['sma50'].time < oldestDataPoint]
-    print(data['sma50'])
+    data['sma50'] = data['sma50'][data['sma50'].time > oldestDataPoint]
 
     return data
 
