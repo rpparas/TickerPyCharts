@@ -18,10 +18,11 @@ class TickerChart:
 
 
     def identifyType(self):
-        if len(sys.argv) >= 3:
-            self.seriesType = sys.argv[1]
-        else:
-            self.seriesType = self.askForSeriesType()
+        if len(sys.argv) >= 3 and sys.argv[1].strip().upper() in ['S', 'F', 'C']:
+            self.seriesType = sys.argv[1].strip().upper()
+            return
+
+        self.seriesType = self.askForSeriesType()
 
     def identifyTickers(self):
         if len(sys.argv) >= 3 and sys.argv[2] and self.seriesType in ['S', 'C']:
@@ -32,8 +33,21 @@ class TickerChart:
         elif len(sys.argv) >= 4 and sys.argv[2] and sys.argv[3] and self.seriesType in ['F']:
             self.ticker = sys.argv[2]
             self.converted = sys.argv[3]
-            if self.validateTicker(self.ticker) == 1 and self.validateTicker(self.converted) == 1:
-                return
+
+            if self.validateTicker(self.ticker) == -2:
+                print('Your second ticker is the same as the first one.')
+                self.ticker = ''
+                self.converted = ''
+            elif self.validateTicker(self.ticker) == -3:
+                print('Your first ticker is not considered a physical currency.')
+            elif self.validateTicker(self.converted) == -3:
+                print('Your second ticker is not considered a physical currency.')
+            elif self.validateTicker(self.ticker) == 1:
+                if self.validateTicker(self.converted) == 1:
+                    return
+                elif self.validateTicker(self.converted) == -2:
+
+                    self.converted = self.askForTickerSymbol(f'{self.seriesType}2')
 
         self.ticker = self.askForTickerSymbol(self.seriesType)
         if self.seriesType in ['F']:
@@ -89,16 +103,20 @@ class TickerChart:
             if self.ticker == self.converted and self.converted != '':
                 return -2
 
-            df = pd.read_csv('resources/digital_currency_list.csv')
-            if any(df['currency code'] == ticker):
-                self.seriesType = 'C'
-                self.name = df.loc[df['currency code'] == ticker, 'currency name'].iloc[0]
-                return 1
+            if self.seriesType == 'C':
+                df = pd.read_csv('resources/digital_currency_list.csv')
+                if any(df['currency code'] == ticker):
+                    self.name = df.loc[df['currency code'] == ticker, 'currency name'].iloc[0]
+                    return 1
+                else:
+                    return -3
 
-            df = pd.read_csv('resources/physical_currency_list.csv')
-            if any(df['currency code'] == ticker):
-                self.seriesType = 'F'
-                return 1
+            if self.seriesType == 'F':
+                df = pd.read_csv('resources/physical_currency_list.csv')
+                if any(df['currency code'] == ticker):
+                    return 1
+                else:
+                    return -3
 
             return 0
 
@@ -181,7 +199,7 @@ class TickerChart:
                         close=data['timeseries']['close'],
                         name=seriesLabels[self.seriesType]
                     )
-        data = [candlestick]
+        chartData = [candlestick]
 
         if 'sma50' in data:
             sma50 = go.Scatter(x=data['sma50']['time'],
@@ -196,7 +214,7 @@ class TickerChart:
                                     )
                                 )
                             )
-            data.append(sma50)
+            chartData.append(sma50)
 
         if 'sma200' in data:
             sma200 = go.Scatter(x=data['sma200']['time'],
@@ -211,9 +229,9 @@ class TickerChart:
                                     )
                                 )
                             )
-            data.append(sma200)
+            chartData.append(sma200)
 
-        fig = go.Figure(data=data, layout=self.getLayoutParams())
+        fig = go.Figure(data=chartData, layout=self.getLayoutParams())
         py.plot(fig, filename='ticker-chart.html')
 
     def getLayoutParams(self):
