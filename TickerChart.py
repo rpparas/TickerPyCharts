@@ -290,10 +290,16 @@ class TickerChart:
         )
         return layout
 
+    def main():
+        from TickerChart import TickerChart
 
-tc = TickerChart()
-tc.identifyType()
-tc.identifyTickers()
-data = tc.requestData()
-if data:
-    tc.plotChart(data)
+        tc = TickerChart()
+        tc.identifyType()
+        tc.identifyTickers()
+        data = tc.requestData()
+        if data:
+            tc.plotChart(data)
+
+    if __name__== "__main__":
+        main()
+
