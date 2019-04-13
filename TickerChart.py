@@ -1,22 +1,30 @@
 import plotly.offline as py
 import plotly.graph_objs as go
 import pandas as pd
-import json
-from pandas.io.json import json_normalize
 
 apiKey = 'JQKUZMZK74N9U4KY'
 apiUrl = 'https://www.alphavantage.co/query?function='
-params = '&symbol=MSFT&datatype=csv&apikey=' + apiKey
-timeseries = apiUrl + 'TIME_SERIES_DAILY' + params
+commonParam = '&symbol=MSFT&datatype=csv&apikey=' + apiKey
+endpoints = {
+    # daily opening, high, low and closing prices for a ticker
+    'timeseries': {'fxn': 'TIME_SERIES_DAILY', 'x-axis': 'timestamp'},
+    # 50-day moving average of prices at closing:
+    'sma50': {'fxn': 'SMA&interval=daily&time_period=50&series_type=close', 'x-axis': 'time'},
+}
 
-df = pd.read_csv(timeseries)
-df.sort_values(by=['timestamp']) # sort entries by date (from oldest to newest)
+data = {}
+for name, epParams in endpoints.items():
+    requestUrl = apiUrl + epParams['fxn'] + commonParam
+    data[name] = pd.read_csv(requestUrl)
+    data[name].sort_values(by=[epParams['x-axis']])
 
 
-trace = go.Ohlc(x=df['timestamp'],
-                open=df['open'],
-                high=df['high'],
-                low=df['low'],
-                close=df['close'])
-data = [trace]
+candlestick = go.Ohlc(x=data['timeseries']['timestamp'],
+                open=data['timeseries']['open'],
+                high=data['timeseries']['high'],
+                low=data['timeseries']['low'],
+                close=data['timeseries']['close'])
+sma50 = go.Scatter(x=data['sma50']['time'],
+                close=data['sma50']['SMA'])
+data = [candlestick]
 py.plot(data, filename='simple_candlestick.html')
