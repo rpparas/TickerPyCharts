@@ -49,8 +49,8 @@ class TickerChart:
     def askForTickerSymbol(self, key):
         label = {
             'S': 'Ticker symbol (e.g.  GOOGL)',
-            'F': 'Physical or digital currency you\'re converting from (e.g. USD)',
-            'F2': 'Physical or digital currency you\'re converting to (e.g. BTC)',
+            'F': 'Physical or Digital currency you\'re converting FROM (e.g. USD)',
+            'F2': 'Physical or Digital currency you\'re converting TO (e.g. BTC)',
             'C': 'Ticker for digital currency (e.g. ETH)',
         }
 
@@ -84,7 +84,6 @@ class TickerChart:
                 return 0
 
         else: # handle all physical and digital currencies by checking against the lists we have
-
             df = pd.read_csv('resources/digital_currency_list.csv')
             if any(df['currency code'] == ticker):
                 self.seriesType = 'C'
@@ -198,9 +197,19 @@ class TickerChart:
         py.plot(fig, filename='ticker-chart.html')
 
     def getLayoutParams(self):
+        titles = {
+            'S': f' Time Series for {self.ticker}<br>{self.name}',
+            'F': f' {self.ticker} to {self.converted} Exchange Rate',
+            'C': f' {self.ticker} Cryptocurrency Spot Prices',
+        }
+        if self.seriesType in ['S', 'C']:
+            yAxisLabel = self.currency
+        else:
+            yAxisLabel = f'{self.ticker} to {self.converted}'
+
         layout = go.Layout(
             title=go.layout.Title(
-                text=f' Time Series for {self.ticker}<br>{self.name}',
+                text=titles[self.seriesType],
                 xref='paper',
                 font=dict(family="Verdana", size=25)
             ),
@@ -216,7 +225,7 @@ class TickerChart:
             ),
             yaxis=go.layout.YAxis(
                 title=go.layout.yaxis.Title(
-                    text=self.currency,
+                    text=yAxisLabel,
                     font=dict(
                         family='Courier New, monospace',
                         size=18,
