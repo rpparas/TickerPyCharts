@@ -6,56 +6,97 @@ import sys
 class TickerChart:
     def __init__(self):
         self.ticker = ''
+        self.converted = ''
         self.name = ''
         self.df = None
         self.matchingTickers = []
-        self.seriesType = 'Stock Prices'
+        self.seriesType = 'S'
         self.currency = 'USD'
         self.start = ''
         self.end = ''
         self.apiKey = 'JQKUZMZK74N9U4KY'
 
 
-    def getTicker(self):
-        if len(sys.argv) == 3:
-            seriesType = sys.argv[1]
-            ticker = sys.argv[2]
+    def identifyType(self):
+        if len(sys.argv) >= 3:
+            self.seriesType = sys.argv[1]
         else:
-            # TO-DO: ask for ticker type first (stock, forex, crypto)
-            ticker = self.requestUserInput()
+            self.seriesType = self.askForSeriesType()
 
+    def identifyTickers(self):
+        if sys.argv[2] and self.seriesType in ['S', 'C']:
+            self.ticker = sys.argv[2]
+            if self.isTickerValid(self.ticker):
+                return
+
+        elif sys.argv[2] and sys.argv[3] and self.seriesType in ['F']:
+            self.ticker = sys.argv[2]
+            self.converted = sys.argv[3]
+            if self.isTickerValid(self.ticker) and self.isTickerValid(self.converted):
+                return
+
+        self.ticker = self.askForTickerSymbol(self.seriesType)
+        if self.seriesType in ['F']:
+            self.converted = self.askForTickerSymbol(f'{self.seriesType}2')
+
+
+    def askForSeriesType(self):
+        while True:
+            seriesType = input("Enter [S] for Stocks, [F] for Foreign Exchange Rates, [C] for Cryptocurrency Prices: ").strip().upper()
+            if seriesType in ['S', 'F', 'C']:
+                return seriesType
+
+    def askForTickerSymbol(self, key):
+        label = {
+            'S': 'Ticker symbol (e.g.  GOOGL)',
+            'F': 'Physical or digital currency you\'re converting from (e.g. USD)',
+            'F2': 'Physical or digital currency you\'re converting to (e.g. BTC)',
+            'C': 'Ticker for digital currency (e.g. ETH)',
+        }
+
+        ticker = input(f"Enter a {label[key]}: ")
         tickerStatus = self.isTickerValid(ticker)
-        while tickerStatus != 1:
+        if tickerStatus == 1:
+            return ticker
+        else:
             print('Your input doesn\'t appear to be a valid ticker.')
             if tickerStatus == -1 and len(self.getMatchingTickers()) > 0:
                 print(f'Here are some suggestions: {suggestions}')
 
-            ticker = self.requestUserInput()
-            tickerStatus = self.isTickerValid(ticker)
-
-        return ticker
-
-
-    def requestUserInput(self):
-        return input("Enter a Ticker symbol: ")
+            return self.askForTickerSymbol(key)
 
     # returns 1 if ticker is an exact match, 0 if there are no matching tickers, -1 if there are ticker suggestions
     def isTickerValid(self, ticker):
         print("Please hold on while we look that up ...")
 
         ticker = ticker.strip().upper()
-        requestUrl = f'https://www.alphavantage.co/query?function=SYMBOL_SEARCH&keywords={ticker}&apikey=' + self.apiKey
-        df = pd.read_json(requestUrl)
-        if df.empty:
-            return -1
-        firstMatch = df['bestMatches'].iloc[0]['1. symbol']
-        if firstMatch == ticker:
-            self.ticker = ticker
-            self.name = df['bestMatches'].iloc[0]['2. name']
-            self.df = df
-            return 1
-        else:
+        if self.seriesType == "S": # make sure that the ticker corresponds to a valid stock:
+            requestUrl = f'https://www.alphavantage.co/query?function=SYMBOL_SEARCH&keywords={ticker}&apikey=' + self.apiKey
+            df = pd.read_json(requestUrl)
+            if df.empty:
+                return -1
+            firstMatch = df['bestMatches'].iloc[0]['1. symbol']
+            if firstMatch == ticker:
+                self.name = df['bestMatches'].iloc[0]['2. name']
+                self.df = df
+                return 1
+            else:
+                return 0
+
+        else: # handle all physical and digital currencies by checking against the lists we have
+
+            df = pd.read_csv('resources/digital_currency_list.csv')
+            if any(df['currency code'] == ticker):
+                self.seriesType = 'C'
+                return 1
+
+            df = pd.read_csv('resources/physical_currency_list.csv')
+            if any(df['currency code'] == ticker):
+                self.seriesType = 'F'
+                return 1
+
             return 0
+
 
     def getMatchingTickers(self):
         if self.df and self.df.empty:
@@ -65,68 +106,94 @@ class TickerChart:
             return self.matchingTickers
 
     # This function assumes that ticker has already been verified as valid, otherwise, we need to add error-checking
-    def requestData(self, ticker):
+    def requestData(self):
         print("Requesting data from server (this may take a while) ...")
+
         apiUrl = 'https://www.alphavantage.co/query?function='
-        commonParam = f'&symbol={ticker}&datatype=csv&apikey=' + self.apiKey
-        endpoints = {
-            # daily opening, high, low and closing prices for a ticker
-            'timeseries': {'fxn': 'TIME_SERIES_DAILY', 'x-axis': 'timestamp'},
+        commonParam = f'&symbol={self.ticker}&datatype=csv&apikey=' + self.apiKey
+
+        endpoints = {}
+        if self.seriesType in ['S']:
+            # daily opening, high, low and closing prices for a stock ticker
+            endpoints['timeseries'] = {'fxn': f'TIME_SERIES_DAILY', 'x-axis': 'timestamp'}
+
             # 50-day moving average of prices at closing:
-            'sma50': {'fxn': 'SMA&interval=daily&time_period=50&series_type=close', 'x-axis': 'time'},
+            endpoints['sma50'] = {'fxn': 'SMA&interval=daily&time_period=50&series_type=close', 'x-axis': 'time'}
+
             # 200-day moving average of prices at closing
-            'sma200': {'fxn': 'SMA&interval=daily&time_period=200&series_type=close', 'x-axis': 'time'},
-        }
+            endpoints['sma200'] = {'fxn': 'SMA&interval=daily&time_period=200&series_type=close', 'x-axis': 'time'}
+
+        elif self.seriesType in ['F']:
+            endpoints['timeseries'] = {'fxn': f'FX_DAILY&from_symbol={self.ticker}&to_symbol={self.converted}', 'x-axis': 'timestamp'}
+        elif self.seriesType in ['C']:
+            endpoints['timeseries'] = {'fxn': 'DIGITAL_CURRENCY_DAILY&market=USD', 'x-axis': 'timestamp'}
 
         data = {}
         for name, epParams in endpoints.items():
             print(f'  Downloading {name} ... ')
             requestUrl = apiUrl + epParams['fxn'] + commonParam
+            print(requestUrl)
             data[name] = pd.read_csv(requestUrl)
             data[name] = data[name].sort_values(by=[epParams['x-axis']])
 
         self.start = data['timeseries'].iloc[0]['timestamp']
         self.end = data['timeseries'].iloc[-1]['timestamp']
-        data['sma50'] = data['sma50'][data['sma50'].time > self.start]
-        data['sma200'] = data['sma200'][data['sma200'].time > self.start]
+
+        print(f'  Cleaning up data ... ')
+        if 'sma50' in endpoints:
+            data['sma50'] = data['sma50'][data['sma50'].time > self.start]
+        if 'sma200' in endpoints:
+            data['sma200'] = data['sma200'][data['sma200'].time > self.start]
 
         return data
 
 
     def plotChart(self, data):
         print(f'Preparing graphing library to plot chart for {self.ticker} ...')
+        seriesLabels = {
+            'S': 'Stock Prices',
+            'F': 'Forex Exchange Rate',
+            'C': 'Cryptocurrency Spot Prices',
+        }
         candlestick = go.Ohlc(x=data['timeseries']['timestamp'],
                         open=data['timeseries']['open'],
                         high=data['timeseries']['high'],
                         low=data['timeseries']['low'],
                         close=data['timeseries']['close'],
-                        name=self.seriesType)
-        sma50 = go.Scatter(x=data['sma50']['time'],
-                        y=data['sma50']['SMA'],
-                        name='50-day MA',
-                        marker = dict(
-                                size = 10,
-                                color = 'rgba(128, 0, 0, .9)',
-                                line = dict(
-                                    width = 2,
-                                    color = 'rgb(128, 0, 0)',
-                                )
-                            )
-                        )
-        sma200 = go.Scatter(x=data['sma200']['time'],
-                        y=data['sma200']['SMA'],
-                        name='200-day MA',
-                        marker = dict(
-                                size = 10,
-                                color = 'rgba(0, 0, 255, .8)',
-                                line = dict(
-                                    width = 2,
-                                    color = 'rgb(0, 0, 255)'
-                                )
-                            )
-                        )
+                        name=seriesLabels[self.seriesType]
+                    )
+        data = [candlestick]
 
-        data = [candlestick, sma50, sma200]
+        if 'sma50' in data:
+            sma50 = go.Scatter(x=data['sma50']['time'],
+                            y=data['sma50']['SMA'],
+                            name='50-day MA',
+                            marker = dict(
+                                    size = 10,
+                                    color = 'rgba(128, 0, 0, .9)',
+                                    line = dict(
+                                        width = 2,
+                                        color = 'rgb(128, 0, 0)',
+                                    )
+                                )
+                            )
+            data.append(sma50)
+
+        if 'sma200' in data:
+            sma200 = go.Scatter(x=data['sma200']['time'],
+                            y=data['sma200']['SMA'],
+                            name='200-day MA',
+                            marker = dict(
+                                    size = 10,
+                                    color = 'rgba(0, 0, 255, .8)',
+                                    line = dict(
+                                        width = 2,
+                                        color = 'rgb(0, 0, 255)'
+                                    )
+                                )
+                            )
+            data.append(sma200)
+
         fig = go.Figure(data=data, layout=self.getLayoutParams())
         py.plot(fig, filename='ticker-chart.html')
 
@@ -162,6 +229,7 @@ class TickerChart:
 
 
 tc = TickerChart()
-ticker = tc.getTicker()
-data = tc.requestData(ticker)
+tc.identifyType()
+tc.identifyTickers()
+data = tc.requestData()
 tc.plotChart(data)
