@@ -13,12 +13,15 @@ class TickerChart:
         self.currency = 'USD'
         self.start = ''
         self.end = ''
+        self.apiKey = 'JQKUZMZK74N9U4KY'
 
 
     def getTicker(self):
         if len(sys.argv) == 3:
-            ticker = sys.argv[1]
+            seriesType = sys.argv[1]
+            ticker = sys.argv[2]
         else:
+            # TO-DO: ask for ticker type first (stock, forex, crypto)
             ticker = self.requestUserInput()
 
         tickerStatus = self.isTickerValid(ticker)
@@ -40,9 +43,8 @@ class TickerChart:
     def isTickerValid(self, ticker):
         print("Please hold on while we look that up ...")
 
-        ticker = strip(upper(ticker))
-        apiKey = 'JQKUZMZK74N9U4KY'
-        requestUrl = f'https://www.alphavantage.co/query?function=SYMBOL_SEARCH&keywords={ticker}&apikey=' + apiKey
+        ticker = ticker.strip().upper()
+        requestUrl = f'https://www.alphavantage.co/query?function=SYMBOL_SEARCH&keywords={ticker}&apikey=' + self.apiKey
         df = pd.read_json(requestUrl)
         if df.empty:
             return -1
@@ -64,9 +66,9 @@ class TickerChart:
 
     # This function assumes that ticker has already been verified as valid, otherwise, we need to add error-checking
     def requestData(self, ticker):
-        apiKey = 'JQKUZMZK74N9U4KY'
+        print("Requesting data from server (this may take a while) ...")
         apiUrl = 'https://www.alphavantage.co/query?function='
-        commonParam = f'&symbol={ticker}&datatype=csv&apikey=' + apiKey
+        commonParam = f'&symbol={ticker}&datatype=csv&apikey=' + self.apiKey
         endpoints = {
             # daily opening, high, low and closing prices for a ticker
             'timeseries': {'fxn': 'TIME_SERIES_DAILY', 'x-axis': 'timestamp'},
@@ -82,9 +84,10 @@ class TickerChart:
             data[name] = pd.read_csv(requestUrl)
             data[name] = data[name].sort_values(by=[epParams['x-axis']])
 
-        oldestDataPoint = data['timeseries'].iloc[0]['timestamp']
-        data['sma50'] = data['sma50'][data['sma50'].time > oldestDataPoint]
-        data['sma200'] = data['sma200'][data['sma200'].time > oldestDataPoint]
+        self.start = data['timeseries'].iloc[0]['timestamp']
+        self.end = data['timeseries'].iloc[-1]['timestamp']
+        data['sma50'] = data['sma50'][data['sma50'].time > self.start]
+        data['sma200'] = data['sma200'][data['sma200'].time > self.start]
 
         return data
 
