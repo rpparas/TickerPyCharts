@@ -9,6 +9,7 @@ def getTicker():
     else:
         ticker = requestUserInput()
 
+    print("Please hold on while while we look that up ...")
     tickerStatus = isTickerValid(ticker)
     while tickerStatus != 1:
         print('Your entry doesn\'t appear to be a valid ticker.')
@@ -17,6 +18,7 @@ def getTicker():
             if len(suggestions) > 0:
                 print(f'Here are some suggestions: {suggestions}')
         ticker = requestUserInput()
+        print("Please hold on while while we look that up ...")
         tickerStatus = isTickerValid(ticker)
 
     return ticker
@@ -24,7 +26,6 @@ def getTicker():
 
 def requestUserInput():
     ticker = input("Enter a Ticker symbol: ")
-    print("Please hold on while while we look that up ...")
     return ticker
 
 # returns 1 if ticker is an exact match, 0 if there are no matching tickers, -1 if there are ticker suggestions
@@ -74,6 +75,7 @@ def requestData(ticker):
 
 
 def plotChart(data):
+    print("Preparing graphing library to plot chart ...")
     candlestick = go.Ohlc(x=data['timeseries']['timestamp'],
                     open=data['timeseries']['open'],
                     high=data['timeseries']['high'],
@@ -86,7 +88,6 @@ def plotChart(data):
 
     data = [candlestick, sma50, sma200]
     py.plot(data, filename='ticker-chart.html')
-
 
 ticker = getTicker()
 data = requestData(ticker)
