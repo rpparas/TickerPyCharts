@@ -11,6 +11,8 @@ def requestData():
         'timeseries': {'fxn': 'TIME_SERIES_DAILY', 'x-axis': 'timestamp'},
         # 50-day moving average of prices at closing:
         'sma50': {'fxn': 'SMA&interval=daily&time_period=50&series_type=close', 'x-axis': 'time'},
+        # 200-day moving average of prices at closing
+        'sma200': {'fxn': 'SMA&interval=daily&time_period=200&series_type=close', 'x-axis': 'time'},
     }
 
     data = {}
@@ -21,6 +23,7 @@ def requestData():
 
     oldestDataPoint = data['timeseries'].iloc[0]['timestamp']
     data['sma50'] = data['sma50'][data['sma50'].time > oldestDataPoint]
+    data['sma200'] = data['sma200'][data['sma200'].time > oldestDataPoint]
 
     return data
 
@@ -33,10 +36,12 @@ def plotChart(data):
                     close=data['timeseries']['close'])
     sma50 = go.Scatter(x=data['sma50']['time'],
                     y=data['sma50']['SMA'])
+    sma200 = go.Scatter(x=data['sma200']['time'],
+                    y=data['sma200']['SMA'])
 
-    data = [candlestick, sma50]
-    py.plot(data, filename='simple_candlestick.html')
+    data = [candlestick, sma50, sma200]
+    py.plot(data, filename='ticker-chart.html')
 
 
 data = requestData()
-# plotChart(data)
+plotChart(data)
