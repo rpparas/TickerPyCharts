@@ -96,6 +96,9 @@ class TickerChart:
     # Returns -3 if currency doesn't match expected forex/crypto input
 
     def validateTicker(self, ticker):
+        if ticker is None or ticker.strip() == '':
+            return 0
+
         ticker = ticker.strip().upper()
         if self.seriesType == "S": # make sure that the ticker corresponds to a valid stock:
             requestUrl = f'https://www.alphavantage.co/query?function=SYMBOL_SEARCH&keywords={ticker}&apikey=' + self.apiKey
