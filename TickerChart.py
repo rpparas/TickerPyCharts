@@ -9,10 +9,14 @@ class TickerChart:
         self.name = ''
         self.df = None
         self.matchingTickers = []
+        self.seriesType = 'Stock Prices'
+        self.currency = 'USD'
+        self.start = ''
+        self.end = ''
 
 
     def getTicker(self):
-        if len(sys.argv) == 2:
+        if len(sys.argv) == 3:
             ticker = sys.argv[1]
         else:
             ticker = self.requestUserInput()
@@ -34,8 +38,9 @@ class TickerChart:
 
     # returns 1 if ticker is an exact match, 0 if there are no matching tickers, -1 if there are ticker suggestions
     def isTickerValid(self, ticker):
-        print("Please hold on while while we look that up ...")
+        print("Please hold on while we look that up ...")
 
+        ticker = strip(upper(ticker))
         apiKey = 'JQKUZMZK74N9U4KY'
         requestUrl = f'https://www.alphavantage.co/query?function=SYMBOL_SEARCH&keywords={ticker}&apikey=' + apiKey
         df = pd.read_json(requestUrl)
@@ -90,14 +95,49 @@ class TickerChart:
                         open=data['timeseries']['open'],
                         high=data['timeseries']['high'],
                         low=data['timeseries']['low'],
-                        close=data['timeseries']['close'])
+                        close=data['timeseries']['close'],
+                        name=self.seriesType)
         sma50 = go.Scatter(x=data['sma50']['time'],
-                        y=data['sma50']['SMA'])
+                        y=data['sma50']['SMA'],
+                        name='50-day MA')
         sma200 = go.Scatter(x=data['sma200']['time'],
-                        y=data['sma200']['SMA'])
+                        y=data['sma200']['SMA'],
+                        name='200-day MA')
 
         data = [candlestick, sma50, sma200]
-        py.plot(data, filename='ticker-chart.html')
+        fig = go.Figure(data=data, layout=self.getLayoutParams())
+        py.plot(fig, filename='ticker-chart.html')
+
+    def getLayoutParams(self):
+        layout = go.Layout(
+            title=go.layout.Title(
+                text= f' Time Series for {self.ticker}',
+                xref='paper',
+                x=0
+            ),
+            xaxis=go.layout.XAxis(
+                title=go.layout.xaxis.Title(
+                    text=f'Period (from {self.start} to {self.end}) ',
+                    font=dict(
+                        family='Courier New, monospace',
+                        size=18,
+                        color='#7f7f7f'
+                    )
+                )
+            ),
+            yaxis=go.layout.YAxis(
+                title=go.layout.yaxis.Title(
+                    text=self.currency,
+                    font=dict(
+                        family='Courier New, monospace',
+                        size=18,
+                        color='#7f7f7f'
+                    )
+                )
+            )
+        )
+        return layout
+
 
 tc = TickerChart()
 ticker = tc.getTicker()
