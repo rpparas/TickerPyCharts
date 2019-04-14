@@ -8,10 +8,11 @@ class TickerChart:
     def __init__(self):
         self.ticker = ''
         self.converted = ''
-        self.name = ''
+        self.name = 'Not Available'
         self.df = None
         self.seriesType = 'S'
         self.currency = 'USD'
+        self.matchingTickers = []
         self.start = ''
         self.end = ''
         self.apiKey = 'JQKUZMZK74N9U4KY'
@@ -95,7 +96,13 @@ class TickerChart:
         except KeyboardInterrupt:
             self.displayStatus(-1)
 
-        tickerStatus = self.validateTicker(ticker)
+        if ticker in self.getMatchingTickers():
+            tickerStatus = 1
+        else:
+            self.matchingTickers = []
+            tickerStatus = self.validateTicker(ticker)
+
+
         if tickerStatus == 1:
             return ticker
         elif tickerStatus == -2:
@@ -122,12 +129,16 @@ class TickerChart:
         ticker = urllib.parse.quote(ticker)
         if self.seriesType == 'S': # make sure that the ticker corresponds to a valid stock:
             requestUrl = f'https://www.alphavantage.co/query?function=SYMBOL_SEARCH&keywords={ticker}&apikey=' + self.apiKey
+            # print(requestUrl)
             contents = urllib.request.urlopen(requestUrl).read()
             output = json.loads(contents)
             df = pd.DataFrame(output['bestMatches'])
 
             if df.empty:
-                return 0
+                requestUrl = self.getRequestUrl(self.seriesType, 'timeseries')
+                df = pd.read_csv(requestUrl)
+                return 0 if df.empty else 1
+
             firstMatch = df['1. symbol'].iloc[0]
             if firstMatch == ticker:
                 self.name = df['2. name'].iloc[0]
@@ -160,55 +171,65 @@ class TickerChart:
 
 
     def getMatchingTickers(self):
+        if len(self.matchingTickers) > 0:
+            return self.matchingTickers
+
         try:
-            return list(self.df['1. symbol'])
+            self.matchingTickers = list(self.df['1. symbol'])
+            return self.matchingTickers
         except AttributeError:
             return []
         except TypeError:
             return []
 
-    # This function assumes that ticker has already been verified as valid, otherwise, we need to add error-checking
-    def requestData(self):
-        if self.shouldOutputToConsole:
-            print("Requesting data from server (this may take a while) ...")
-
+    def getRequestUrl(self, key, epName):
         apiUrl = 'https://www.alphavantage.co/query?function='
         commonParam = f'&symbol={self.ticker}&datatype=csv&apikey=' + self.apiKey
 
         endpoints = {}
         if self.seriesType in ['S']:
             # daily opening, high, low and closing prices for a stock ticker
-            endpoints['timeseries'] = {'fxn': f'TIME_SERIES_DAILY', 'x-axis': 'timestamp'}
+            endpoints['timeseries'] = 'TIME_SERIES_DAILY'
 
             # 50-day moving average of prices at closing:
-            endpoints['sma50'] = {'fxn': 'SMA&interval=daily&time_period=50&series_type=close', 'x-axis': 'time'}
+            endpoints['sma50'] = 'SMA&interval=daily&time_period=50&series_type=close'
 
             # 200-day moving average of prices at closing
-            endpoints['sma200'] = {'fxn': 'SMA&interval=daily&time_period=200&series_type=close', 'x-axis': 'time'}
+            endpoints['sma200'] = 'SMA&interval=daily&time_period=200&series_type=close'
 
         elif self.seriesType in ['F']:
-            endpoints['timeseries'] = {'fxn': f'FX_DAILY&from_symbol={self.ticker}&to_symbol={self.converted}', 'x-axis': 'timestamp'}
+            endpoints['timeseries'] = f'FX_DAILY&from_symbol={self.ticker}&to_symbol={self.converted}'
 
             # internally-computed 50-day MA since this isn't available from API
         elif self.seriesType in ['C']:
-            endpoints['timeseries'] = {'fxn': 'DIGITAL_CURRENCY_DAILY&market=USD', 'x-axis': 'timestamp'}
+            endpoints['timeseries'] = 'DIGITAL_CURRENCY_DAILY&market=USD'
 
+        requestUrl = ''
+        if key == 'S':
+            requestUrl = apiUrl + endpoints[epName] + commonParam
+        return requestUrl
 
+    # This function assumes that ticker has already been verified as valid, otherwise, we need to add error-checking
+    def requestData(self):
+        if self.shouldOutputToConsole:
+            print("Requesting data from server (this may take a while) ...")
+
+        endpoints = ['timeseries', 'sma50', 'sma200']
         data = {}
-        for name, epParams in endpoints.items():
-            if self.shouldOutputToConsole:
-                print(f'  Downloading {name} ... ')
-            requestUrl = apiUrl + epParams['fxn'] + commonParam
-            # print(requestUrl)
 
-            try:
-                data[name] = pd.read_csv(requestUrl)
-                data[name] = data[name].sort_values(by=[epParams['x-axis']])
-            except KeyboardInterrupt:
-                self.displayStatus(-1)
-            except KeyError:
-                print('We\'re sorry but our data source doesn\'t support these inputs or may have exceeded the rate limits.')
-                return
+        for epName in endpoints:
+            if self.shouldOutputToConsole:
+                print(f'  Downloading {epName} ... ')
+                requestUrl = self.getRequestUrl(self.seriesType, epName)
+                try:
+                    data[epName] = pd.read_csv(requestUrl)
+                    xAxis = 'timestamp' if epName == 'timeseries' else 'time'
+                    data[epName] = data[epName].sort_values(by=xAxis)
+                except KeyboardInterrupt:
+                    self.displayStatus(-1)
+                except KeyError:
+                    print('We\'re sorry but our data source doesn\'t support these inputs or you may have exceeded the rate limits.')
+                    return
 
         self.start = data['timeseries'].iloc[0]['timestamp']
         self.end = data['timeseries'].iloc[-1]['timestamp']
