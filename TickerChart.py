@@ -114,7 +114,8 @@ class TickerChart:
             return 0
 
         ticker = ticker.strip().upper()
-        if self.seriesType == "S": # make sure that the ticker corresponds to a valid stock:
+        ticker = urllib.parse.quote(ticker)
+        if self.seriesType == 'S': # make sure that the ticker corresponds to a valid stock:
             requestUrl = f'https://www.alphavantage.co/query?function=SYMBOL_SEARCH&keywords={ticker}&apikey=' + self.apiKey
             contents = urllib.request.urlopen(requestUrl).read()
             output = json.loads(contents)
