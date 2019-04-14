@@ -71,7 +71,12 @@ class TickerChart:
 
     def askForSeriesType(self):
         while True:
-            seriesType = input("Enter [S] for Stocks, [F] for Foreign Exchange Rates, [C] for Cryptocurrency Prices: ").strip().upper()
+            prompt = 'Enter [S] for Stocks, [F] for Foreign Exchange Rates, [C] for Cryptocurrency Prices: '
+            try:
+                seriesType = input(prompt).strip().upper()
+            except KeyboardInterrupt:
+                self.displayStatus(-1)
+
             if seriesType in ['S', 'F', 'C']:
                 return seriesType
 
@@ -86,9 +91,9 @@ class TickerChart:
         try:
             if key == 'S' and len(self.getMatchingTickers()) > 0:
                 print(f'We can\'t an exact match for that ticker.\nPerhaps you meant: {self.getMatchingTickers()}')
-            ticker = input(f"Enter a {label[key]}: ").strip().upper()
+            ticker = input(f'  Enter a {label[key]}: ').strip().upper()
         except KeyboardInterrupt:
-            print('Program terminated.')
+            self.displayStatus(-1)
 
         tickerStatus = self.validateTicker(ticker)
         if tickerStatus == 1:
@@ -192,13 +197,15 @@ class TickerChart:
             if self.shouldOutputToConsole:
                 print(f'  Downloading {name} ... ')
             requestUrl = apiUrl + epParams['fxn'] + commonParam
-            # print(requestUrl)
+            print(requestUrl)
 
             try:
                 data[name] = pd.read_csv(requestUrl)
                 data[name] = data[name].sort_values(by=[epParams['x-axis']])
+            except KeyboardInterrupt:
+                self.displayStatus(-1)
             except KeyError:
-                print("We're sorry but our data source doesn't support these inputs.")
+                print("We're sorry but our data source doesn't support these inputs or may have exceeded the rate limits.")
                 return
 
         self.start = data['timeseries'].iloc[0]['timestamp']
@@ -318,6 +325,12 @@ class TickerChart:
             )
         )
         return layout
+
+    def displayStatus(self, code):
+        if code == -1:
+            print('\nProgram terminated by user.')
+            exit()
+
 
     def main():
         from TickerChart import TickerChart
