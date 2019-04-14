@@ -83,10 +83,10 @@ class TickerChart:
 
     def askForTickerSymbol(self, key):
         label = {
-            'S': 'Ticker symbol for stock (e.g. GOOGL)',
-            'F': 'Physical currency you\'re converting FROM (e.g. USD)',
-            'F2': 'Physical currency you\'re converting TO (e.g. EUR)',
-            'C': 'Ticker for digital currency (e.g. ETH)',
+            'S': 'ticker symbol for stock (e.g. GOOGL)',
+            'F': 'physical currency you\'re converting FROM (e.g. USD)',
+            'F2': 'physical currency you\'re converting TO (e.g. EUR)',
+            'C': 'ticker symbol for digital currency (e.g. ETH)',
         }
 
         try:
@@ -204,10 +204,11 @@ class TickerChart:
         elif self.seriesType in ['C']:
             endpoints['timeseries'] = 'DIGITAL_CURRENCY_DAILY&market=USD'
 
-        requestUrl = ''
-        if key == 'S':
-            requestUrl = apiUrl + endpoints[epName] + commonParam
-        return requestUrl
+        if epName not in endpoints:
+            print(endpoints)
+            self.displayStatus(-2)
+
+        return apiUrl + endpoints[epName] + commonParam
 
     # This function assumes that ticker has already been verified as valid, otherwise, we need to add error-checking
     def requestData(self):
@@ -218,13 +219,18 @@ class TickerChart:
         data = {}
 
         for epName in endpoints:
-            if self.shouldOutputToConsole:
-                print(f'  Downloading {epName} ... ')
-                requestUrl = self.getRequestUrl(self.seriesType, epName)
+            if self.seriesType == 'S' or epName == 'timeseries':
+                if self.shouldOutputToConsole:
+                    print(f'  Downloading {epName} ... ')
+
                 try:
+                    requestUrl = self.getRequestUrl(self.seriesType, epName)
+                    # print(requestUrl)
+
                     data[epName] = pd.read_csv(requestUrl)
                     xAxis = 'timestamp' if epName == 'timeseries' else 'time'
                     data[epName] = data[epName].sort_values(by=xAxis)
+
                 except KeyboardInterrupt:
                     self.displayStatus(-1)
                 except KeyError:
@@ -236,13 +242,13 @@ class TickerChart:
 
         # rename column names to make them consistent
         if self.seriesType == 'C':
+            smas = {'sma50': 50, 'sma200': 200}
             data['timeseries'] = data['timeseries'].rename(columns = {"open (USD)": "open",
                                                                             "high (USD)": "high",
                                                                             "low (USD)": "low",
                                                                             "close (USD)": "close"
                                                                         }
                                                                     )
-            smas = {'sma50': 50, 'sma200': 200}
         if self.seriesType == 'F':
             smas = {'sma50': 50}
 
@@ -253,11 +259,10 @@ class TickerChart:
             data['sma200'] = data['sma200'][data['sma200'].time > self.start]
         else:
             for sma, days in smas.items():
-                if sma not in endpoints:
-                    data[sma] = pd.DataFrame({
-                            'time': list(data['timeseries']['timestamp']),
-                            'SMA': list(data['timeseries']['close'].rolling(window = days).mean())
-                        })
+                data[sma] = pd.DataFrame({
+                        'time': list(data['timeseries']['timestamp']),
+                        'SMA': list(data['timeseries']['close'].rolling(window = days).mean())
+                    })
 
 
         return data
@@ -368,6 +373,9 @@ class TickerChart:
     def displayStatus(self, code):
         if code == -1:
             print('\nProgram terminated by user.')
+            exit()
+        if code == -2:
+            print('\nInvalid request URL.')
             exit()
 
 
