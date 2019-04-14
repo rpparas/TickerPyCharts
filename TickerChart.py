@@ -188,6 +188,8 @@ class TickerChart:
 
         elif self.seriesType in ['F']:
             endpoints['timeseries'] = {'fxn': f'FX_DAILY&from_symbol={self.ticker}&to_symbol={self.converted}', 'x-axis': 'timestamp'}
+
+            # internally-computed 50-day MA since this isn't available from API
         elif self.seriesType in ['C']:
             endpoints['timeseries'] = {'fxn': 'DIGITAL_CURRENCY_DAILY&market=USD', 'x-axis': 'timestamp'}
 
@@ -219,12 +221,23 @@ class TickerChart:
                                                                             "close (USD)": "close"
                                                                         }
                                                                     )
+            smas = {'sma50': 50, 'sma200': 200}
+        if self.seriesType == 'F':
+            smas = {'sma50': 50}
 
-        print(f'  Cleaning up data ... ')
-        if 'sma50' in endpoints:
+
+        print(f'  Organizing & cleaning up data ... ')
+        if self.seriesType == 'S':
             data['sma50'] = data['sma50'][data['sma50'].time > self.start]
-        if 'sma200' in endpoints:
             data['sma200'] = data['sma200'][data['sma200'].time > self.start]
+        else:
+            for sma, days in smas.items():
+                if sma not in endpoints:
+                    data[sma] = pd.DataFrame({
+                            'time': list(data['timeseries']['timestamp']),
+                            'SMA': list(data['timeseries']['close'].rolling(window = days).mean())
+                        })
+
 
         return data
 
