@@ -197,7 +197,7 @@ class TickerChart:
             if self.shouldOutputToConsole:
                 print(f'  Downloading {name} ... ')
             requestUrl = apiUrl + epParams['fxn'] + commonParam
-            print(requestUrl)
+            # print(requestUrl)
 
             try:
                 data[name] = pd.read_csv(requestUrl)
@@ -205,7 +205,7 @@ class TickerChart:
             except KeyboardInterrupt:
                 self.displayStatus(-1)
             except KeyError:
-                print("We're sorry but our data source doesn't support these inputs or may have exceeded the rate limits.")
+                print('We\'re sorry but our data source doesn\'t support these inputs or may have exceeded the rate limits.')
                 return
 
         self.start = data['timeseries'].iloc[0]['timestamp']
@@ -231,7 +231,7 @@ class TickerChart:
 
     def plotChart(self, data):
         if self.seriesType in ['S', 'C']:
-            print(f'Preparing graphing library to plot chart for {self.ticker} ...')
+            print(f'Preparing graphing library to plot chart for {self.name} (${self.ticker}) ...')
         else:
             print(f'Preparing graphing library to plot chart for {self.ticker} to {self.converted} ...')
 
@@ -240,19 +240,19 @@ class TickerChart:
             'F': 'Forex Exchange Rate',
             'C': 'Cryptocurrency Spot Prices',
         }
-        candlestick = go.Ohlc(x=data['timeseries']['timestamp'],
-                        open=data['timeseries']['open'],
-                        high=data['timeseries']['high'],
-                        low=data['timeseries']['low'],
-                        close=data['timeseries']['close'],
-                        name=seriesLabels[self.seriesType]
+        candlestick = go.Ohlc(x = data['timeseries']['timestamp'],
+                        open = data['timeseries']['open'],
+                        high = data['timeseries']['high'],
+                        low = data['timeseries']['low'],
+                        close = data['timeseries']['close'],
+                        name = seriesLabels[self.seriesType]
                     )
         chartData = [candlestick]
 
         if 'sma50' in data:
-            sma50 = go.Scatter(x=data['sma50']['time'],
-                            y=data['sma50']['SMA'],
-                            name='50-day MA',
+            sma50 = go.Scatter(x = data['sma50']['time'],
+                            y = data['sma50']['SMA'],
+                            name = '50-day MA',
                             marker = dict(
                                     size = 10,
                                     color = 'rgba(128, 0, 0, .9)',
@@ -265,9 +265,9 @@ class TickerChart:
             chartData.append(sma50)
 
         if 'sma200' in data:
-            sma200 = go.Scatter(x=data['sma200']['time'],
-                            y=data['sma200']['SMA'],
-                            name='200-day MA',
+            sma200 = go.Scatter(x = data['sma200']['time'],
+                            y = data['sma200']['SMA'],
+                            name ='200-day MA',
                             marker = dict(
                                     size = 10,
                                     color = 'rgba(0, 0, 255, .8)',
@@ -279,12 +279,17 @@ class TickerChart:
                             )
             chartData.append(sma200)
 
-        fig = go.Figure(data=chartData, layout=self.getLayoutParams())
+        fig = go.Figure(data = chartData, layout = self.getLayoutParams())
+        py.plot(fig, filename = self.generateFilename())
+
+
+    def generateFilename(self):
         path = f'outputs/ticker-chart-{self.ticker}'
         if self.converted != '':
             path += f'-{self.converted}'
         path += '.html'
-        py.plot(fig, filename=path)
+        return path
+
 
     def getLayoutParams(self):
         titles = {
@@ -301,12 +306,12 @@ class TickerChart:
             title=go.layout.Title(
                 text=titles[self.seriesType],
                 xref='paper',
-                font=dict(family="Verdana", size=25)
+                font = dict(family="Verdana", size=25)
             ),
             xaxis=go.layout.XAxis(
                 title=go.layout.xaxis.Title(
                     text=f'Period',
-                    font=dict(
+                    font = dict(
                         family='Verdana',
                         size=18,
                         color='#7f7f7f'
@@ -316,7 +321,7 @@ class TickerChart:
             yaxis=go.layout.YAxis(
                 title=go.layout.yaxis.Title(
                     text=yAxisLabel,
-                    font=dict(
+                    font = dict(
                         family='Verdana',
                         size=18,
                         color='#7f7f7f'
