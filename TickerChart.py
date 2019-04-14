@@ -154,10 +154,12 @@ class TickerChart:
 
 
     def getMatchingTickers(self):
-        if self.df.empty:
-            return []
-        else:
+        try:
             return list(self.df['1. symbol'])
+        except AttributeError:
+            return []
+        except TypeError:
+            return []
 
     # This function assumes that ticker has already been verified as valid, otherwise, we need to add error-checking
     def requestData(self):
