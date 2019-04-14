@@ -15,6 +15,17 @@ class TickerChart:
         self.start = ''
         self.end = ''
         self.apiKey = 'JQKUZMZK74N9U4KY'
+        self.shouldOutputToConsole = True
+
+    def setTickers(ticker, converted = ''):
+        self.ticker = ticker
+        self.converted = converted
+
+    def setSeriesType(seriesType):
+        self.seriesType = seriesType
+
+    def enableConsoleOutput(shouldOutputToConsole):
+        self.shouldOutputToConsole = shouldOutputToConsole
 
 
     def identifyType(self):
@@ -25,7 +36,8 @@ class TickerChart:
         self.seriesType = self.askForSeriesType()
 
     def identifyTickers(self):
-        print('Please wait while we validate your inputs.')
+        if self.shouldOutputToConsole:
+            print('Please wait while we validate your inputs.')
 
         if len(sys.argv) >= 3 and sys.argv[2] and self.seriesType in ['S', 'C']:
             self.ticker = sys.argv[2]
@@ -145,7 +157,8 @@ class TickerChart:
 
     # This function assumes that ticker has already been verified as valid, otherwise, we need to add error-checking
     def requestData(self):
-        print("Requesting data from server (this may take a while) ...")
+        if self.shouldOutputToConsole:
+            print("Requesting data from server (this may take a while) ...")
 
         apiUrl = 'https://www.alphavantage.co/query?function='
         commonParam = f'&symbol={self.ticker}&datatype=csv&apikey=' + self.apiKey
@@ -169,7 +182,8 @@ class TickerChart:
 
         data = {}
         for name, epParams in endpoints.items():
-            print(f'  Downloading {name} ... ')
+            if self.shouldOutputToConsole:
+                print(f'  Downloading {name} ... ')
             requestUrl = apiUrl + epParams['fxn'] + commonParam
             # print(requestUrl)
             try:
