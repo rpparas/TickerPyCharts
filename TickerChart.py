@@ -30,7 +30,7 @@ class TickerChart:
 
 
     def identifyType(self):
-        if len(sys.argv) >= 3 and sys.argv[1].strip().upper() in ['S', 'F', 'C']:
+        if len(sys.argv) >= 2 and sys.argv[1].strip().upper() in ['S', 'F', 'C']:
             self.seriesType = sys.argv[1].strip().upper()
             return
 
@@ -40,12 +40,12 @@ class TickerChart:
         if self.shouldOutputToConsole:
             print('Please wait while we validate your inputs.')
 
-        if len(sys.argv) >= 3 and sys.argv[2] and self.seriesType in ['S', 'C']:
+        if len(sys.argv) >= 3 and self.seriesType in ['S', 'C']:
             self.ticker = sys.argv[2]
             if self.validateTicker(self.ticker) == 1:
                 return
 
-        if self.seriesType in ['F']:
+        if len(sys.argv) >= 4 and self.seriesType in ['F']:
             if len(sys.argv) >= 3:
                 self.ticker = sys.argv[2].strip().upper()
                 if self.validateTicker(self.ticker) == 1:
