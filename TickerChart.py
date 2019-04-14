@@ -2,6 +2,7 @@ import plotly.offline as py
 import plotly.graph_objs as go
 import pandas as pd
 import sys
+import json, urllib.request
 
 class TickerChart:
     def __init__(self):
@@ -9,7 +10,6 @@ class TickerChart:
         self.converted = ''
         self.name = ''
         self.df = None
-        self.matchingTickers = []
         self.seriesType = 'S'
         self.currency = 'USD'
         self.start = ''
@@ -84,6 +84,8 @@ class TickerChart:
         }
 
         try:
+            if key == 'S' and len(self.getMatchingTickers()) > 0:
+                print(f'We can\'t an exact match for that ticker.\nPerhaps you meant: {self.getMatchingTickers()}')
             ticker = input(f"Enter a {label[key]}: ").strip().upper()
         except KeyboardInterrupt:
             print('Program terminated.')
@@ -96,7 +98,7 @@ class TickerChart:
         else:
             print('Your input doesn\'t appear to be a valid ticker.')
             if key == 'S' and len(self.getMatchingTickers()) > 0:
-                print(f'Here are some suggestions: {self.getMatchingTickers()}')
+                print(f'We can\'t an exact match for that ticker.\nPerhaps you meant: {self.getMatchingTickers()}')
 
         return self.askForTickerSymbol(key)
 
@@ -114,16 +116,20 @@ class TickerChart:
         ticker = ticker.strip().upper()
         if self.seriesType == "S": # make sure that the ticker corresponds to a valid stock:
             requestUrl = f'https://www.alphavantage.co/query?function=SYMBOL_SEARCH&keywords={ticker}&apikey=' + self.apiKey
-            df = pd.read_json(requestUrl)
+            contents = urllib.request.urlopen(requestUrl).read()
+            output = json.loads(contents)
+            df = pd.DataFrame(output['bestMatches'])
+
             if df.empty:
-                return -1
-            firstMatch = df['bestMatches'].iloc[0]['1. symbol']
+                return 0
+            firstMatch = df['1. symbol'].iloc[0]
             if firstMatch == ticker:
-                self.name = df['bestMatches'].iloc[0]['2. name']
+                self.name = df['2. name'].iloc[0]
                 self.df = df
                 return 1
             else:
-                return 0
+                self.df = df
+                return -1
 
         else: # handle all physical and digital currencies by checking against the lists we have
             if self.ticker == self.converted and self.converted != '':
@@ -148,12 +154,10 @@ class TickerChart:
 
 
     def getMatchingTickers(self):
-        if self.df and self.df.empty:
+        if self.df.empty:
             return []
         else:
-            print(self.df)
-            self.matchingTickers = list(self.df['bestMatches']['1. symbol'])
-            return self.matchingTickers
+            return list(self.df['1. symbol'])
 
     # This function assumes that ticker has already been verified as valid, otherwise, we need to add error-checking
     def requestData(self):
@@ -186,6 +190,7 @@ class TickerChart:
                 print(f'  Downloading {name} ... ')
             requestUrl = apiUrl + epParams['fxn'] + commonParam
             # print(requestUrl)
+
             try:
                 data[name] = pd.read_csv(requestUrl)
                 data[name] = data[name].sort_values(by=[epParams['x-axis']])
