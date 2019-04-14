@@ -272,7 +272,11 @@ class TickerChart:
             chartData.append(sma200)
 
         fig = go.Figure(data=chartData, layout=self.getLayoutParams())
-        py.plot(fig, filename='ticker-chart.html')
+        path = f'outputs/ticker-chart-{self.ticker}'
+        if self.converted != '':
+            path += f'-{self.converted}'
+        path += '.html'
+        py.plot(fig, filename=path)
 
     def getLayoutParams(self):
         titles = {
