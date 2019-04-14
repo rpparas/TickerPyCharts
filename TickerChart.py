@@ -34,10 +34,10 @@ class TickerChart:
 
         if self.seriesType in ['F']:
             if len(sys.argv) >= 3:
-                self.ticker = sys.argv[2]
+                self.ticker = sys.argv[2].strip().upper()
                 if self.validateTicker(self.ticker) == 1:
                     if len(sys.argv) >= 4:
-                        self.converted = sys.argv[3]
+                        self.converted = sys.argv[3].strip().upper()
                         if self.validateTicker(self.converted) == 1:
                             return
                         elif self.validateTicker(self.converted) == -2:
