@@ -28,6 +28,12 @@ A mini-project showing how to plot equity, currency and other ticker symbols usi
 2. If you're trying to run the program inside Sublime, you'll likely be unable to do so due to Sublime's restrictions in accessing STDIN. To get around this, please run the program via command line.
 3. To cancel or terminate the program, press `Ctrl C` on Windows or Mac.
 
+# Future (Nice-to-have) Features:
+1. Build REST API with MVT architecture using Flask
+2. Create gateway for GET operations to retrieve ticker data (timeseries, SMA, etc)
+3. Build frontend UI for inputs and validation using Vue.js
+4. Use frontend charting library using D3.js or HighCharts which interfaces with backend API
+
 # Links:
 - API data source: Alpha Advantage | https://www.alphavantage.co/documentation/
 - Plotting library: Plotly | https://plot.ly/python/candlestick-charts/
