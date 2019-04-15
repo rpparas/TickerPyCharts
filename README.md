@@ -36,6 +36,7 @@ A mini-project showing how to plot equity, currency and other ticker symbols usi
 4. Use frontend charting library using D3.js or HighCharts which interfaces with backend API
 
 # Links:
-- API data source: Alpha Advantage | https://www.alphavantage.co/documentation/
+- API data source: Alpha Vantage | https://www.alphavantage.co/documentation/
 - Plotting library: Plotly | https://plot.ly/python/candlestick-charts/
 - Python version: 3.7 | https://www.python.org/downloads/
+
