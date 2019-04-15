@@ -17,6 +17,7 @@ class TickerChart:
         self.end = ''
         self.apiKey = 'JQKUZMZK74N9U4KY'
         self.shouldOutputToConsole = True
+        self.isDebugMode = False
 
     def setTickers(self, ticker, converted = ''):
         self.ticker = ticker
@@ -24,6 +25,9 @@ class TickerChart:
 
     def setSeriesType(self, seriesType):
         self.seriesType = seriesType
+
+    def setDebugMode(self, isDebugMode):
+        self.isDebugMode = isDebugMode
 
     def enableConsoleOutput(self, shouldOutputToConsole):
         self.shouldOutputToConsole = shouldOutputToConsole
@@ -76,7 +80,7 @@ class TickerChart:
             try:
                 seriesType = input(prompt).strip().upper()
             except KeyboardInterrupt:
-                self.displayStatus(-1)
+                self.displayErrorStatus(-1)
 
             if seriesType in ['S', 'F', 'C']:
                 return seriesType
@@ -94,7 +98,7 @@ class TickerChart:
                 print(f'We can\'t an exact match for that ticker.\nPerhaps you meant: {self.getMatchingTickers()}')
             ticker = input(f'  Enter a {label[key]}: ').strip().upper()
         except KeyboardInterrupt:
-            self.displayStatus(-1)
+            self.displayErrorStatus(-1)
 
         if ticker in self.getMatchingTickers():
             tickerStatus = 1
@@ -129,15 +133,28 @@ class TickerChart:
         ticker = urllib.parse.quote(ticker)
         if self.seriesType == 'S': # make sure that the ticker corresponds to a valid stock:
             requestUrl = f'https://www.alphavantage.co/query?function=SYMBOL_SEARCH&keywords={ticker}&apikey=' + self.apiKey
-            # print(requestUrl)
+            if self.isDebugMode:
+                print(requestUrl)
+
             contents = urllib.request.urlopen(requestUrl).read()
             output = json.loads(contents)
-            df = pd.DataFrame(output['bestMatches'])
+
+            try:
+                df = pd.DataFrame(output['bestMatches'])
+            except KeyError:
+                self.displayErrorStatus(-3)
 
             if df.empty:
-                requestUrl = self.getRequestUrl(self.seriesType, 'timeseries')
+                requestUrl = self.getRequestUrl(self.seriesType, 'timeseries', ticker)
+                if self.isDebugMode:
+                    print(requestUrl)
+
                 df = pd.read_csv(requestUrl)
-                return 0 if df.empty else 1
+
+                if len(df) < 3:
+                    return 0
+                else:
+                    return 1
 
             firstMatch = df['1. symbol'].iloc[0]
             if firstMatch == ticker:
@@ -182,9 +199,10 @@ class TickerChart:
         except TypeError:
             return []
 
-    def getRequestUrl(self, key, epName):
+    def getRequestUrl(self, key, epName, ticker = ''):
         apiUrl = 'https://www.alphavantage.co/query?function='
-        commonParam = f'&symbol={self.ticker}&datatype=csv&apikey=' + self.apiKey
+        commonParam = '&symbol=' + (self.ticker if ticker == '' else ticker)
+        commonParam += '&datatype=csv&apikey=' + self.apiKey
 
         endpoints = {}
         if self.seriesType in ['S']:
@@ -205,8 +223,7 @@ class TickerChart:
             endpoints['timeseries'] = 'DIGITAL_CURRENCY_DAILY&market=USD'
 
         if epName not in endpoints:
-            print(endpoints)
-            self.displayStatus(-2)
+            self.displayErrorStatus(-2)
 
         return apiUrl + endpoints[epName] + commonParam
 
@@ -225,14 +242,15 @@ class TickerChart:
 
                 try:
                     requestUrl = self.getRequestUrl(self.seriesType, epName)
-                    # print(requestUrl)
+                    if self.isDebugMode:
+                        print(requestUrl)
 
                     data[epName] = pd.read_csv(requestUrl)
                     xAxis = 'timestamp' if epName == 'timeseries' else 'time'
                     data[epName] = data[epName].sort_values(by=xAxis)
 
                 except KeyboardInterrupt:
-                    self.displayStatus(-1)
+                    self.displayErrorStatus(-1)
                 except KeyError:
                     print('We\'re sorry but our data source doesn\'t support these inputs or you may have exceeded the rate limits.')
                     return
@@ -370,13 +388,18 @@ class TickerChart:
         )
         return layout
 
-    def displayStatus(self, code):
-        if code == -1:
-            print('\nProgram terminated by user.')
-            exit()
-        if code == -2:
-            print('\nInvalid request URL.')
-            exit()
+    def displayErrorStatus(self, code):
+        errorCodes = {
+            -1: 'Program terminated by user.',
+            -2: 'Invalid request URL.',
+            -3: 'Rate limit reached. Please try again in a few minutes',
+        }
+
+        if code in errorCodes:
+            print('\n'+errorCodes[code])
+        else:
+            print('\nUnknown error {code} encountered. Please contact support.')
+        exit()
 
 
     def main():
