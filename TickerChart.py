@@ -179,7 +179,13 @@ class TickerChart:
 
             if self.seriesType == 'F':
                 df = pd.read_csv('resources/physical_currency_list.csv')
+
                 if any(df['currency code'] == ticker):
+                    currencyName = df.loc[df['currency code'] == ticker, 'currency name'].iloc[0]
+                    if self.name == 'Not Available':
+                        self.name = currencyName
+                    else:
+                        self.name = self.name + ' to ' + currencyName
                     return 1
                 else:
                     return -3
@@ -351,7 +357,7 @@ class TickerChart:
     def getLayoutParams(self):
         titles = {
             'S': f' Time Series for {self.ticker}<br>Stock Name: {self.name}',
-            'F': f' {self.ticker} to {self.converted} Exchange Rate',
+            'F': f' {self.ticker} to {self.converted} Exchange Rate<br>{self.name}',
             'C': f' {self.ticker} Cryptocurrency Spot Prices<br>{self.name} in USD (default)',
         }
         if self.seriesType in ['S', 'C']:
