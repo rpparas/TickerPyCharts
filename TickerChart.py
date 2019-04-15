@@ -279,8 +279,8 @@ class TickerChart:
 
         print(f'  Organizing & cleaning up data ... ')
         if self.seriesType == 'S':
-            data['sma50'] = data['sma50'][data['sma50'].time > self.start]
-            data['sma200'] = data['sma200'][data['sma200'].time > self.start]
+            data['sma50'] = data['sma50'][data['sma50'].time >= self.start]
+            data['sma200'] = data['sma200'][data['sma200'].time >= self.start]
         else:
             for sma, days in smas.items():
                 data[sma] = pd.DataFrame({
@@ -412,6 +412,7 @@ class TickerChart:
         from TickerChart import TickerChart
 
         tc = TickerChart()
+        # tc.setDebugMode(True)
         tc.identifyType()
         tc.identifyTickers()
         data = tc.requestData()
