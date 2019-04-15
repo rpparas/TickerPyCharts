@@ -18,14 +18,14 @@ class TickerChart:
         self.apiKey = 'JQKUZMZK74N9U4KY'
         self.shouldOutputToConsole = True
 
-    def setTickers(ticker, converted = ''):
+    def setTickers(self, ticker, converted = ''):
         self.ticker = ticker
         self.converted = converted
 
-    def setSeriesType(seriesType):
+    def setSeriesType(self, seriesType):
         self.seriesType = seriesType
 
-    def enableConsoleOutput(shouldOutputToConsole):
+    def enableConsoleOutput(self, shouldOutputToConsole):
         self.shouldOutputToConsole = shouldOutputToConsole
 
 
